@@ -1,63 +1,63 @@
+
+    
+
+
 import RPi.GPIO as GPIO
 import time
 import smtplib
 from email.message import EmailMessage
 
-# 传感器配置
-channel = 21
+# ------------------- 硬件配置 -------------------
+CHANNEL = 4  # D0引脚连接到GPIO 4（BCM编号）
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(channel, GPIO.IN)
+GPIO.cleanup()  # 清理残留的GPIO配置
+GPIO.setup(CHANNEL, GPIO.IN)
 
-# 邮件配置
-from_email = "2806058107@qq.com"  # 替换为你的QQ邮箱地址
-app_password = "ylwphpddfiandhbb"  # 替换为你的QQ邮箱授权码
-to_email = "2806058107@qq.com"  # 替换为接收邮件的邮箱地址
+# ------------------- 邮件配置（以QQ邮箱为例） -------------------
+FROM_EMAIL = "2806058107@qq.com"       # 发件人邮箱（QQ邮箱）
+APP_PASSWORD = "ylwphpddfiandhbb"         # 在QQ邮箱中生成的授权码
+TO_EMAIL = FROM_EMAIL                    # 收件人邮箱（可设为自己）
 
-
-def send_water_notification():
+# ------------------- 邮件发送函数 -------------------
+def send_email(subject, body):
     msg = EmailMessage()
-    msg.set_content("警告：植物土壤干燥，需要浇水！")
-    msg['Subject'] = "浇水提醒 - 树莓派监测系统"
-    msg['From'] = from_email
-    msg['To'] = to_email
+    msg.set_content(body)
+    msg['Subject'] = subject
+    msg['From'] = FROM_EMAIL
+    msg['To'] = TO_EMAIL
+
     try:
         with smtplib.SMTP_SSL('smtp.qq.com', 465) as server:
-            server.login(from_email, app_password)
+            server.login(FROM_EMAIL, APP_PASSWORD)
             server.send_message(msg)
+        print(f"邮件发送成功：{subject}")
     except Exception as e:
-        print(f"发送浇水提醒邮件时出错: {e}")
+        print(f"邮件发送失败：{str(e)}")
 
+# ------------------- 传感器状态检测 -------------------
+def check_moisture_status():
+    status = GPIO.input(CHANNEL)
+    if status == GPIO.HIGH:
+        return "土壤湿润，无需浇水"
+    else:
+        return "土壤干燥，需要浇水！"
 
-def moisture_callback(channel):
-    if not GPIO.input(channel):  # 干燥状态（D0输出低电平）
-        send_water_notification()
-
-
-GPIO.add_event_detect(channel, GPIO.FALLING, bouncetime=300)  # 仅在干燥时触发
-GPIO.add_event_callback(channel, moisture_callback)
-
-
-def send_daily_report(min_reading, max_reading):
-    msg = EmailMessage()
-    msg.set_content(f"今日传感器读数：最小值 {min_reading}，最大值 {max_reading}。")
-    msg['Subject'] = "每日传感器读数报告 - 树莓派监测系统"
-    msg['From'] = from_email
-    msg['To'] = to_email
+# ------------------- 主循环（每天4次检测，间隔6小时） -------------------
+if __name__ == "__main__":
     try:
-        with smtplib.SMTP_SSL('smtp.qq.com', 465) as server:
-            server.login(from_email, app_password)
-            server.send_message(msg)
-    except Exception as e:
-        print(f"发送每日报告邮件时出错: {e}")
-
-
-while True:
-    daily_readings = []
-    for _ in range(5):
-        reading = GPIO.input(channel)  # 0=干燥，1=湿润
-        daily_readings.append(reading)
-        time.sleep(3600)
-    min_reading = min(daily_readings)
-    max_reading = max(daily_readings)
-    send_daily_report(min_reading, max_reading)
-    
+        while True:
+            daily_readings = []
+            for _ in range(4):  # 每天记录4次读数（文档要求）
+                status = check_moisture_status()
+                daily_readings.append(status)
+                # 发送单次状态邮件（可选：根据需求决定是否每次检测都发邮件）
+                send_email("实时湿度检测", f"当前状态：{status}")
+                time.sleep(21600)  # 间隔6小时（6*3600秒）
+            
+            # 发送每日总结邮件（包含4次检测结果）
+            summary = "\n".join([f"{i+1}. {reading}" for i, reading in enumerate(daily_readings)])
+            send_email("每日湿度报告", f"今日4次检测结果：\n{summary}")
+            
+    except KeyboardInterrupt:
+        print("\n程序终止，清理GPIO资源...")
+        GPIO.cleanup()
