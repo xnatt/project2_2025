@@ -42,7 +42,7 @@ def check_moisture_status():
 if __name__ == "__main__":
     try:
         while True:
-            for _ in range(4):
+            for _ in range(6):
                 status = check_moisture_status()
                 send_email("Real - Time Moisture Detection", f"Current status: {status}")
                 time.sleep(14400)  # 6 - hour interval
