@@ -1,19 +1,20 @@
+
 import RPi.GPIO as GPIO
 import time
 import smtplib
 from email.message import EmailMessage
 
-# 硬件配置
-CHANNEL = 4  # D0引脚连接到GPIO 4（BCM编号）
+# Hardware configuration
+CHANNEL = 4  # The D0 pin is connected to GPIO 4 (BCM numbering)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(CHANNEL, GPIO.IN)
 
-# 邮件配置（已填入你的信息）
+# Email configuration (with your information filled in)
 FROM_EMAIL = "2806058107@qq.com"
 APP_PASSWORD = "ylwphpddfiandhbb"
-TO_EMAIL = FROM_EMAIL  # 发送给自己
+TO_EMAIL = FROM_EMAIL  # Send to yourself
 
-# 邮件发送函数（优化异常处理）
+# Email sending function (optimized exception handling)
 def send_email(subject, body):
     msg = EmailMessage()
     msg.set_content(body)
@@ -26,29 +27,29 @@ def send_email(subject, body):
             server.login(FROM_EMAIL, APP_PASSWORD)
             response = server.send_message(msg)
             if not response:
-                print(f"邮件发送成功：{subject}")
-                
+                print(f"Email sent successfully: {subject}")
+
     except (smtplib.SMTPAuthenticationError, smtplib.SMTPConnectError) as e:
-        print(f"邮件发送失败：核心错误 - {str(e)}")
+        print(f"Email sending failed: Core error - {str(e)}")
     except Exception as e:
-        pass  # 忽略非关键异常（如连接关闭时的不完整响应）
+        pass  # Ignore non - critical exceptions (such as incomplete responses when the connection is closed)
 
-# 传感器状态检测
+# Sensor status detection
 def check_moisture_status():
-    return "土壤干燥，需要浇水！" if GPIO.input(CHANNEL) else "土壤湿润，无需浇水。"
+    return "The soil is dry and needs watering!" if GPIO.input(CHANNEL) else "The soil is moist and no watering is required."
 
-# 主循环（每天4次检测，间隔6小时）
+# Main loop (4 detections per day, with a 6 - hour interval)
 if __name__ == "__main__":
     try:
         while True:
             for _ in range(4):
                 status = check_moisture_status()
-                send_email("实时湿度检测", f"当前状态：{status}")
-                time.sleep(21600)  # 6小时间隔
-                
-            # 每日总结（可选，根据需求添加）
-            # send_email("每日湿度报告", "今日4次检测均正常...")
-            
+                send_email("Real - Time Moisture Detection", f"Current status: {status}")
+                time.sleep(21600)  # 6 - hour interval
+
+            # Daily summary (optional, add as needed)
+            # send_email("Daily Moisture Report", "All 4 detections today were normal...")
+
     except KeyboardInterrupt:
-        print("\n程序终止，清理GPIO资源...")
+        print("\nProgram terminated, cleaning up GPIO resources...")
         GPIO.cleanup()
