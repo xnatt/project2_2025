@@ -45,7 +45,7 @@ if __name__ == "__main__":
             for _ in range(4):
                 status = check_moisture_status()
                 send_email("Real - Time Moisture Detection", f"Current status: {status}")
-                time.sleep(21600)  # 6 - hour interval
+                time.sleep(14400)  # 6 - hour interval
 
             # Daily summary (optional, add as needed)
             # send_email("Daily Moisture Report", "All 4 detections today were normal...")
